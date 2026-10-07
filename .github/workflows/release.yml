@@ -38,7 +38,10 @@ jobs:
           node scripts/bump-version.mjs "${DATE_VER}.${{ github.run_number }}"
 
       - name: Setup Neutralino binaries
-        run: npx neu update
+        run: |
+          npx neu update
+          # Xóa bỏ các binary không cần thiết (mac x86, mac universal, linux arm) để tối ưu thời gian build
+          rm -f bin/neutralino-mac_x64 bin/neutralino-mac_universal bin/neutralino-linux_arm64 bin/neutralino-linux_armhf
 
       - name: Build Web & Neutralino App
         run: npm run neu:build
