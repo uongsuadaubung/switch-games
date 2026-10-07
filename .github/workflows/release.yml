@@ -1,17 +1,21 @@
-name: Release
+name: Build & Release
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 on:
+  workflow_dispatch:   # Cho phép ấn nút "Run workflow" trên GitHub UI
+  push:
+    branches:
+      - main           # Tự động chạy khi push code lên main
   release:
-    types: [published]   # Trigger khi publish release trên GitHub UI
+    types: [published]
 
 jobs:
-  build-windows:
-    runs-on: windows-latest
+  build-and-deploy:
+    runs-on: ubuntu-latest
     permissions:
-      contents: write   # cần để tạo release và upload artifacts
+      contents: write   # cần để tạo release và push branch web
     steps:
       - uses: actions/checkout@v4
         with:
@@ -25,62 +29,50 @@ jobs:
           node-version: 24
           cache: npm
 
-      - name: Auto Bump Version from Tag
-        shell: bash
-        run: |
-          # refs/tags/v0.5.5 -> 0.5.5
-          VERSION=${GITHUB_REF#refs/tags/v}
-          echo "Bumping to version $VERSION"
-          node scripts/bump-version.mjs $VERSION
-
-      - name: Commit & Push changes
-        shell: bash
-        run: |
-          git config --global user.name 'github-actions[bot]'
-          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-          git add .
-          git commit -m "chore: bump version to ${{ github.event.release.tag_name }} [skip ci]" || echo "No changes to commit"
-          git push origin HEAD:${{ github.event.repository.default_branch }}
-
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Cache Rust dependencies
-        uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: src-tauri
-
-      - name: Build
-        run: npm run tauri build
-
-      - name: Upload exe to existing release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh release upload ${{ github.event.release.tag_name }} `
-            "src-tauri/target/release/switch-games.exe" `
-            --clobber
-
-  deploy-web:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write   # cần để push vào branch web
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: npm
-
       - name: Install dependencies
         run: npm install
 
-      - name: Build for GitHub Pages
-        run: npm run build
+      - name: Compute Version (yyyy.mm.dd)
+        id: get_version
+        shell: bash
+        run: |
+          DATE_VER=$(date +'%Y.%m.%d')
+          VERSION="v${DATE_VER}.${{ github.run_number }}"
+          echo "Calculated Version: $VERSION"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          node scripts/bump-version.mjs "${DATE_VER}.${{ github.run_number }}"
+
+      - name: Build Web & Neutralino App
+        run: npm run neu:build
         env:
           DEPLOY_TARGET: gh-pages
+
+      - name: Create GitHub Release & Upload Artifacts
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          ver="${{ steps.get_version.outputs.version }}"
+          cp dist/switch-games/switch-games-win_x64.exe dist/switch-games-windows-x64.exe
+          cp dist/switch-games/switch-games-linux_x64 dist/switch-games-linux-x64
+          cp dist/switch-games/switch-games-mac_arm64 dist/switch-games-mac-arm64
+
+          gh release create "$ver" \
+            "dist/switch-games-windows-x64.exe#switch-games-windows-x64.exe" \
+            "dist/switch-games-linux-x64#switch-games-linux-x64" \
+            "dist/switch-games-mac-arm64#switch-games-mac-arm64" \
+            --title "Release $ver" \
+            --notes "Tự động phát hành phiên bản $ver"
+
+      - name: Keep only 5 latest releases (Clean up old releases)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          gh release list --limit 100 --json tagName --jq '.[].tagName' | tail -n +6 | while read -r tag; do
+            echo "🗑️ Đang xóa release cũ: $tag"
+            gh release delete "$tag" --yes --cleanup-tag
+          done
 
       - name: Deploy to branch web
         uses: peaceiris/actions-gh-pages@v4
@@ -88,7 +80,7 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_branch: web
           publish_dir: ./build
-          force_orphan: true          # giữ history gọn — chỉ 1 commit mỗi lần deploy
+          force_orphan: true
           user_name: uongsuadaubung
           user_email: manhkien13041997@gmail.com
-          commit_message: "🚀 Deploy - ${{ github.event.release.tag_name }}"
+          commit_message: "🚀 Deploy web - ${{ steps.get_version.outputs.version }}"

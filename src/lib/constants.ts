@@ -15,13 +15,6 @@ export const GAMES_JSON_URL   = `https://raw.githubusercontent.com/${DATA_REPO}/
 export const GITHUB_RELEASES_API = `https://api.github.com/repos/${APP_REPO}/releases/latest`;
 export const GITHUB_RELEASES_URL = `https://github.com/${APP_REPO}/releases`;
 
-// ── Tauri command names ───────────────────────────────────────────────────────
-
-export const CMD_READ_USER_META     = "read_user_meta";
-export const CMD_WRITE_USER_META    = "write_user_meta";
-export const CMD_OPEN_URL           = "open_url";
-export const CMD_OPEN_URLS          = "open_urls";
-
 // ── localStorage keys ────────────────────────────────────────────────────────
 
 export const STORAGE_VIEW_MODE    = "switch_games_view_mode";

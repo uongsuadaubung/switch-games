@@ -24,6 +24,7 @@
   <link rel="canonical" href="https://uongsuadaubung.github.io/switch-games" />
 
   <link rel="icon" href="%sveltekit.assets%/favicon.png" />
+  <script src="%sveltekit.assets%/neutralino.js"></script>
   %sveltekit.head%
 </head>
 
@@ -32,8 +33,7 @@
 
   <script>
     // Chặn right-click và phím tắt DevTools trong production
-    // Dev mode chạy qua vite devserver (localhost:1420) → không bị chặn
-    // Production build phục vụ qua tauri://localhost → bị chặn
+    // Dev mode chạy qua vite devserver → không bị chặn
     var _isDev = location.port !== '';
     if (!_isDev) {
       document.addEventListener('contextmenu', function (e) { e.preventDefault(); }, true);

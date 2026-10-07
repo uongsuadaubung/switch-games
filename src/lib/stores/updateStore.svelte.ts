@@ -1,4 +1,3 @@
-import { getVersion } from "@tauri-apps/api/app";
 import { GITHUB_RELEASES_API } from "$lib/constants";
 import { IS_BROWSER } from "$lib/environment";
 
@@ -28,6 +27,13 @@ function isNewer(latest: string, current: string): boolean {
   return false;
 }
 
+function getAppVersion(): string {
+  if (typeof window !== "undefined" && (window as unknown as { NL_APPVERSION?: string }).NL_APPVERSION) {
+    return (window as unknown as { NL_APPVERSION: string }).NL_APPVERSION;
+  }
+  return "1.0.0";
+}
+
 function createUpdateStore() {
   let hasUpdate = $state(false);
   let latestVersion = $state("");
@@ -37,14 +43,12 @@ function createUpdateStore() {
   let dismissed = $state(false);
 
   async function checkForUpdate(): Promise<void> {
-    if (IS_BROWSER) return; // getVersion() là Tauri API, không có trên browser
+    if (IS_BROWSER) return; // Chỉ check khi đang mở app desktop
     try {
-      const [appVersion, response] = await Promise.all([
-        getVersion(),
-        fetch(GITHUB_RELEASES_API, {
-          headers: { Accept: "application/vnd.github+json" },
-        }),
-      ]);
+      const appVersion = getAppVersion();
+      const response = await fetch(GITHUB_RELEASES_API, {
+        headers: { Accept: "application/vnd.github+json" },
+      });
 
       currentVersion = appVersion;
 

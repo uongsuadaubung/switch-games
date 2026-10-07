@@ -1,30 +1,37 @@
-import { invoke } from "@tauri-apps/api/core";
 import type { Game, UserMetaMap } from "$lib/types";
 import {
   GAMES_JSON_URL,
-  CMD_READ_USER_META,
-  CMD_WRITE_USER_META,
-  CMD_OPEN_URL,
-  CMD_OPEN_URLS,
   STORAGE_VIEW_MODE,
   STORAGE_USER_META,
 } from "$lib/constants";
-import { IS_BROWSER } from "$lib/environment";
+import { IS_NEUTRALINO } from "$lib/environment";
 
-// ── Cache helpers (Tauri ↔ disk || Browser ↔ localStorage) ──────────────────────────────────────────────
+// ── Cache helpers (Neutralino filesystem || Browser localStorage) ──────────────────────────────────────────────
+
+declare const Neutralino: {
+  filesystem: {
+    readFile(path: string): Promise<string>;
+    writeFile(path: string, data: string): Promise<void>;
+  };
+  os: {
+    open(url: string): Promise<void>;
+  };
+} | undefined;
+
+const USER_META_FILE = "user_meta.json";
 
 /**
  * Đọc user metadata cache — chỉ chứa is_hidden, is_favorite, note.
  * Dữ liệu rất nhẹ so với toàn bộ games.json.
  */
 async function cacheReadUserMeta(): Promise<UserMetaMap | null> {
-  if (!IS_BROWSER) {
+  if (IS_NEUTRALINO && typeof Neutralino !== "undefined") {
     try {
-      const raw = await invoke<string | null>(CMD_READ_USER_META);
+      const raw = await Neutralino.filesystem.readFile(USER_META_FILE);
       if (!raw) return null;
       return JSON.parse(raw) as UserMetaMap;
-    } catch (e) {
-      console.warn("Không đọc được user meta cache từ disk:", e);
+    } catch {
+      // file chưa tồn tại lần đầu mở app
       return null;
     }
   }
@@ -43,20 +50,19 @@ async function cacheReadUserMeta(): Promise<UserMetaMap | null> {
  * Dữ liệu chỉ gồm { game_id: { is_hidden, is_favorite, note } } — rất nhẹ.
  */
 async function cacheWriteUserMeta(meta: UserMetaMap): Promise<void> {
-  if (!IS_BROWSER) {
+  const json = JSON.stringify(meta);
+  if (IS_NEUTRALINO && typeof Neutralino !== "undefined") {
     try {
-      await invoke(CMD_WRITE_USER_META, { data: JSON.stringify(meta) });
+      await Neutralino.filesystem.writeFile(USER_META_FILE, json);
     } catch (e) {
-      console.warn("Không ghi được user meta cache:", e);
+      console.warn("Không ghi được user meta cache vào file:", e);
     }
-  } else {
-    try {
-      localStorage.setItem(STORAGE_USER_META, JSON.stringify(meta));
-    } catch (e) {
-      console.warn("Không ghi được user meta cache vào localStorage:", e);
-      localStorage.removeItem(STORAGE_USER_META);
-
-    }
+  }
+  // Đồng thời lưu vào localStorage để luôn an toàn
+  try {
+    localStorage.setItem(STORAGE_USER_META, json);
+  } catch (e) {
+    console.warn("Không ghi được user meta cache vào localStorage:", e);
   }
 }
 
@@ -415,8 +421,8 @@ function createGameStore() {
 
   async function openUrl(url: string) {
     if (!url || url.trim() === "") return;
-    if (!IS_BROWSER) {
-      await invoke(CMD_OPEN_URL, { url });
+    if (IS_NEUTRALINO && typeof Neutralino !== "undefined") {
+      await Neutralino.os.open(url);
     } else {
       window.open(url, "_blank", "noopener,noreferrer");
     }
@@ -426,8 +432,10 @@ function createGameStore() {
     const urls = game.links
       .map((l) => l.url || l.file_name)
       .filter((u): u is string => Boolean(u));
-    if (!IS_BROWSER) {
-      await invoke(CMD_OPEN_URLS, { urls });
+    if (IS_NEUTRALINO && typeof Neutralino !== "undefined") {
+      for (const url of urls) {
+        await Neutralino.os.open(url);
+      }
     } else {
       // Phải mở đồng bộ trong cùng call stack của user gesture.
       // setTimeout sẽ đưa callback ra ngoài gesture context → browser block.

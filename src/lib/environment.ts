@@ -1,20 +1,20 @@
 /**
- * true khi đang chạy bên trong Tauri webview (cả dev lẫn production).
- * false khi mở thẳng trên browser (vite devserver không qua Tauri).
+ * true khi đang chạy bên trong Neutralino webview.
  */
-export const IS_TAURI = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
+export const IS_NEUTRALINO =
+  typeof window !== "undefined" && typeof (window as unknown as { Neutralino?: unknown }).Neutralino !== "undefined";
 
 /**
- * true khi Vite build ở chế độ development (npm run dev / tauri dev).
- * false ở production build.
+ * true khi đang chạy bên trong Desktop app (Neutralino hoặc Tauri).
+ */
+export const IS_DESKTOP = IS_NEUTRALINO;
+
+/**
+ * true khi mở thẳng trên browser (không qua app desktop).
+ */
+export const IS_BROWSER = !IS_DESKTOP;
+
+/**
+ * true khi Vite build ở chế độ development.
  */
 export const IS_DEV = import.meta.env.DEV;
-
-/** Tauri production build */
-export const IS_TAURI_PROD = IS_TAURI && !IS_DEV;
-
-/** Tauri dev mode (npm run tauri dev) */
-export const IS_TAURI_DEV = IS_TAURI && IS_DEV;
-
-/** Browser thuần — mở vite devserver trực tiếp, không qua Tauri */
-export const IS_BROWSER = !IS_TAURI;

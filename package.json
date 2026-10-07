@@ -9,21 +9,19 @@
     "preview": "vite preview",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
-    "tauri": "tauri",
+    "neu:run": "neu run",
+    "neu:build": "npm run build && neu build --release --embed-resources",
     "bump": "node scripts/bump-version.mjs",
     "postinstall": "npm run check"
   },
   "license": "MIT",
-  "dependencies": {
-    "@tauri-apps/api": "^2",
-    "@tauri-apps/plugin-opener": "^2"
-  },
   "devDependencies": {
+    "@neutralinojs/lib": "^6.10.0",
+    "@neutralinojs/neu": "^11.8.0",
     "@sveltejs/adapter-static": "^3.0.6",
     "@sveltejs/kit": "^2.9.0",
     "@sveltejs/vite-plugin-svelte": "^5.0.0",
     "@tailwindcss/vite": "^4.2.1",
-    "@tauri-apps/cli": "^2",
     "@types/node": "^25.5.0",
     "sass": "^1.98.0",
     "svelte": "^5.0.0",
