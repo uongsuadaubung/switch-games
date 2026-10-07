@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { store } from "$lib/stores/gameStore.svelte";
+  import { store, gameKey } from "$lib/stores/gameStore.svelte";
 
   // Columns: [checkbox | # | Tên game | Kích thước | Thể loại]
   const COL_TEMPLATE = "36px 44px 2fr 1fr 1fr";
@@ -90,8 +90,8 @@
     bind:this={tableBodyEl}
     onkeydown={handleKeydown}
   >
-    {#each store.filteredGames as game, i (game.game_id || game.name)}
-      {@const key = game.game_id || game.name}
+    {#each store.filteredGames as game, i (gameKey(game))}
+      {@const key = gameKey(game)}
       {@const isChecked = store.checkedKeys.has(key)}
       <div
         class="game-row"

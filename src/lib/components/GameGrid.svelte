@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { store } from "$lib/stores/gameStore.svelte";
+  import { store, gameKey } from "$lib/stores/gameStore.svelte";
   import { PANEL_ANIM_MS } from "$lib/constants";
   // ── Keyboard navigation ─────────────────────────────────────────────
   let gridEl = $state<HTMLDivElement | null>(null);
@@ -97,11 +97,11 @@
     </div>
   {:else}
     <div class="game-grid" bind:this={gridEl}>
-      {#each store.filteredGames as game, i (game.game_id || game.name)}
+      {#each store.filteredGames as game, i (gameKey(game))}
         {@const isSelected =
           store.selectedGame?.game_id === game.game_id &&
           store.selectedGame?.name === game.name}
-        {@const isChecked = store.checkedKeys.has(game.game_id || game.name)}
+        {@const isChecked = store.checkedKeys.has(gameKey(game))}
         <div
           class="game-card"
           class:selected={isSelected}

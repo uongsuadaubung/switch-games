@@ -60,11 +60,16 @@ async function cacheWriteUserMeta(meta: UserMetaMap): Promise<void> {
   }
 }
 
+/** Tạo unique key cho mỗi game (kết hợp game_id và name để tránh trùng lặp khi data có lỗi) */
+export function gameKey(game: Game): string {
+  return `${game.game_id || ""}::${game.name}`;
+}
+
 /** Trích xuất user metadata từ allGames → UserMetaMap (chỉ giữ game có metadata) */
 function extractUserMeta(games: Game[]): UserMetaMap {
   const meta: UserMetaMap = {};
   for (const g of games) {
-    const key = g.game_id || g.name;
+    const key = gameKey(g);
     if (g.is_hidden || g.is_favorite || g.note) {
       meta[key] = {
         ...(g.is_hidden   ? { is_hidden: true }   : {}),
@@ -79,8 +84,10 @@ function extractUserMeta(games: Game[]): UserMetaMap {
 /** Merge user metadata lên freshGames từ API */
 function applyUserMeta(games: Game[], meta: UserMetaMap): Game[] {
   return games.map((g) => {
-    const key = g.game_id || g.name;
-    const m = meta[key];
+    // Thử composite key trước, fallback sang game_id hoặc name cũ để tương thích ngược cache cũ
+    const key = gameKey(g);
+    const legacyKey = g.game_id || g.name;
+    const m = meta[key] ?? meta[legacyKey];
     if (!m) return g;
     return {
       ...g,
@@ -214,9 +221,6 @@ function createGameStore() {
   );
 
   // ── Helpers ────────────────────────────────────────────────────────────────
-  function gameKey(game: Game): string {
-    return game.game_id || game.name;
-  }
 
   /** Đóng LinksPanel nếu selectedGame nằm trong tập keys bị tác động */
   function closePanelIfAffected(keys: Set<string>) {
