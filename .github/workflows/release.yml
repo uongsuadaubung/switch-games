@@ -4,12 +4,7 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 on:
-  workflow_dispatch:   # Cho phép ấn nút "Run workflow" trên GitHub UI
-  push:
-    branches:
-      - main           # Tự động chạy khi push code lên main
-  release:
-    types: [published]
+  workflow_dispatch:   # Chỉ build khi ấn nút "Run workflow" trên GitHub UI
 
 jobs:
   build-and-deploy:
@@ -41,6 +36,9 @@ jobs:
           echo "Calculated Version: $VERSION"
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           node scripts/bump-version.mjs "${DATE_VER}.${{ github.run_number }}"
+
+      - name: Setup Neutralino binaries
+        run: npx neu update
 
       - name: Build Web & Neutralino App
         run: npm run neu:build
